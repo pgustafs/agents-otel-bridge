@@ -70,11 +70,13 @@ setup_otel_tracing()  # Uses environment variables
 
 ### Single Trace for Multi-Agent Workflows
 
+Sometimes, you might want multiple calls to `run()` to be part of a single trace. You can do this by wrapping the entire code in a `trace()`.
+
 ```python
-from agents.tracing import with_trace
+from agents import Agent, Runner, trace
 
 # Group multiple agent runs in one trace
-with with_trace("Blog Generation"):
+with trace("Blog Generation"):
     result1 = Runner.run_sync(research_agent, query)
     result2 = Runner.run_sync(writer_agent, result1.final_output)
 ```
@@ -92,15 +94,32 @@ with custom_span("Database Query", metadata={"table": "users"}):
 ### Cost Tracking
 
 ```python
-from agents_otel_bridge import EnhancedOTelBridgeProcessor
+from agents_otel_bridge import setup_otel_tracing
 
-bridge = EnhancedOTelBridgeProcessor(
-    cost_per_1k_input=0.0001,
-    cost_per_1k_output=0.0002
+# Enable cost tracking
+bridge = setup_otel_tracing(
+    service_name="my-agent",
+    use_enhanced=True,  # ← MUST SET THIS
+    cost_per_1k_input=0.0015,   # Your model's pricing
+    cost_per_1k_output=0.002,
 )
 
-# After workflow
+# After workflow, get costs
 print(f"Total cost: ${bridge.get_total_cost():.4f}")
+
+# or more verbose
+# Print cost summary (only works with use_enhanced=True)
+print(f"\n{'='*60}")
+print(f"📊 Workflow Summary")
+print(f"{'='*60}")
+print(f"Total cost: ${bridge.get_total_cost():.4f}")
+print(f"Total LLM requests: {bridge.request_count}")
+if bridge.request_count > 0:
+    print(f"Average cost per request: ${bridge.get_average_cost():.4f}")
+print(f"{'='*60}\n")
+
+print("View traces in Jaeger: http://localhost:16686")
+print(f"Search for service: blog-writer-agent")
 ```
 
 ## Viewing Traces
