@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agents-otel-bridge"
+version = "0.0.1"
+description = "OpenTelemetry tracing bridge for OpenAI Agents SDK"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Peter Gustafsson", email = "peter.gustafsson6@gmail.com"}
+]
+keywords = ["opentelemetry", "tracing", "agents", "llm", "observability"]
+dependencies = [
+    "opentelemetry-api>=1.37.0",
+    "opentelemetry-sdk>=1.37.0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.37.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/pgustafs/agents-otel-bridge"
+Repository = "https://github.com/pgustafs/agents-otel-bridge"
+"Bug Tracker" = "https://github.com/pgustafs/agents-otel-bridge/issues"
