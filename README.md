@@ -108,6 +108,7 @@ bridge = setup_otel_tracing(
 print(f"Total cost: ${bridge.get_total_cost():.4f}")
 
 # or more verbose
+
 # Print cost summary (only works with use_enhanced=True)
 print(f"\n{'='*60}")
 print(f"📊 Workflow Summary")
@@ -120,6 +121,40 @@ print(f"{'='*60}\n")
 
 print("View traces in Jaeger: http://localhost:16686")
 print(f"Search for service: blog-writer-agent")
+
+# or even more verbose
+print(f"\n{'='*60}")
+print(f"📊 Workflow Summary")
+print(f"{'='*60}")
+print(f"💰 Cost Analysis:")
+print(f"   Total cost:              ${bridge.get_total_cost():.4f}")
+print(f"   LLM requests:            {bridge.request_count}")
+if bridge.request_count > 0:
+    print(f"   Avg cost per request:    ${bridge.get_average_cost():.4f}")
+print(f"")
+print(f"🔢 Token Usage:")
+print(f"   Input tokens (prompt):   {bridge.total_input_tokens:,}")
+print(f"   Output tokens (completion): {bridge.total_output_tokens:,}")
+print(f"   Total tokens:            {bridge.get_total_tokens():,}")
+if bridge.get_total_tokens() > 0:
+    print(f"   Cost per 1K tokens:      ${bridge.get_total_cost() / (bridge.get_total_tokens() / 1000):.4f}")
+print(f"")
+print(f"🔧 Tool Usage:")
+print(f"   Tool calls made:         {bridge.tool_call_count}")
+print(f"{'='*60}\n")
+
+# or You can also get all metrics as a dictionary:
+summary = bridge.get_summary()
+print(summary)
+# {
+#   'total_cost': 0.0187,
+#   'llm_requests': 4,
+#   'input_tokens': 2986,
+#   'output_tokens': 4025,
+#   'total_tokens': 7011,
+#   'tool_calls': 3,
+#   'avg_cost_per_request': 0.0047
+# }
 ```
 
 ## Viewing Traces
