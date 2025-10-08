@@ -358,18 +358,7 @@ class OTelBridgeProcessor(TracingProcessor):
 
 
 class EnhancedOTelBridgeProcessor(OTelBridgeProcessor):
-    """
-    Extended bridge with cost tracking and analytics.
-    
-    Example:
-        bridge = EnhancedOTelBridgeProcessor(
-            cost_per_1k_input=0.0001,
-            cost_per_1k_output=0.0002
-        )
-        
-        # After workflow
-        print(f"Total cost: ${bridge.get_total_cost():.4f}")
-    """
+    """Extended bridge with cost tracking and analytics."""
     
     def __init__(self, cost_per_1k_input: float = 0.0001, cost_per_1k_output: float = 0.0002):
         super().__init__()
@@ -377,14 +366,21 @@ class EnhancedOTelBridgeProcessor(OTelBridgeProcessor):
         self.cost_per_1k_output = cost_per_1k_output
         self.total_cost = 0.0
         self.request_count = 0
+        self.total_input_tokens = 0
+        self.total_output_tokens = 0
+        self.tool_call_count = 0
     
     def _add_completion_attributes(self, otel_span, data: Dict[str, Any]):
         super()._add_completion_attributes(otel_span, data)
         
         if data.get('span_type') == 'GenerationSpanData' and data.get('usage'):
             usage = data['usage']
-            input_tokens = usage.get('input_tokens', 0)
-            output_tokens = usage.get('output_tokens', 0)
+            input_tokens = usage.get('input_tokens', 0) or usage.get('prompt_tokens', 0)
+            output_tokens = usage.get('output_tokens', 0) or usage.get('completion_tokens', 0)
+            
+            # Track token usage
+            self.total_input_tokens += input_tokens
+            self.total_output_tokens += output_tokens
             
             cost = (
                 (input_tokens / 1000 * self.cost_per_1k_input) +
@@ -408,6 +404,20 @@ class EnhancedOTelBridgeProcessor(OTelBridgeProcessor):
                     "cost.output_tokens": output_tokens
                 }
             )
+            
+            # Track tool calls in response
+            if data.get('output'):
+                output = data['output']
+                if isinstance(output, list) and len(output) > 0:
+                    message = output[0]
+                    if isinstance(message, dict):
+                        tool_calls = message.get('tool_calls', [])
+                        if tool_calls:
+                            self.tool_call_count += len(tool_calls)
+        
+        # Track successful tool executions
+        elif data.get('span_type') == 'FunctionSpanData':
+            pass
     
     def get_total_cost(self) -> float:
         """Get total cost across all LLM calls."""
@@ -416,7 +426,22 @@ class EnhancedOTelBridgeProcessor(OTelBridgeProcessor):
     def get_average_cost(self) -> float:
         """Get average cost per LLM call."""
         return self.total_cost / self.request_count if self.request_count > 0 else 0.0
-
+    
+    def get_total_tokens(self) -> int:
+        """Get total tokens (input + output)."""
+        return self.total_input_tokens + self.total_output_tokens
+    
+    def get_summary(self) -> Dict[str, Any]:
+        """Get complete workflow summary."""
+        return {
+            "total_cost": self.total_cost,
+            "llm_requests": self.request_count,
+            "input_tokens": self.total_input_tokens,
+            "output_tokens": self.total_output_tokens,
+            "total_tokens": self.get_total_tokens(),
+            "tool_calls": self.tool_call_count,
+            "avg_cost_per_request": self.get_average_cost(),
+        }
 
 def setup_otel_tracing(
     service_name: Optional[str] = None,
