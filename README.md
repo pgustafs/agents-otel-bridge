@@ -163,11 +163,15 @@ print(summary)
 
 ```bash
 # Create a shared pod/network namespace
-podman pod create --name observ -p 16686:16686 -p 4317:4317 -p 4318:4318
+podman pod create --name observ \
+  -p 16686:16686 \
+  -p 4317:4317 \
+  -p 4319:4319
 
 # Jaeger all-in-one with OTLP ingest enabled (gRPC 4317, HTTP 4318)
 podman run -d --rm --name jaeger --pod observ \
   -e COLLECTOR_OTLP_ENABLED=true \
+  -e COLLECTOR_OTLP_GRPC_HOST_PORT=:14317 \
   jaegertracing/all-in-one:latest
 
 # Prepare an OTel Collector config in your current dir:
@@ -176,12 +180,14 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: "0.0.0.0:4317"  # Listen on all interfaces
       http:
+        endpoint: "0.0.0.0:4319"  # Listen on all interfaces
 
 exporters:
   # Forward traces to Jaeger's OTLP receiver inside the same pod
   otlp/jaeger:
-    endpoint: "localhost:4317"   # from the Collector's POV (same pod)
+    endpoint: "localhost:14317"   # from the Collector's POV (same pod)
     tls:
       insecure: true
 
@@ -198,7 +204,7 @@ YAML
 
 # Run the OTel Collector
 podman run -d --rm --name otel-collector --pod observ \
-  -v "$PWD/otelcol.yaml":/etc/otelcol/config.yaml:ro \
+  -v "$PWD/otelcol.yaml":/etc/otelcol/config.yaml:ro,z \
   otel/opentelemetry-collector:latest \
   --config=/etc/otelcol/config.yaml
 ```
